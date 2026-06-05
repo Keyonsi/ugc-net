@@ -1,19 +1,564 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi" data-theme="light">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>UGC NET Hindi Master</title>
-<link rel="manifest" href="./manifest.json">
-<link rel="stylesheet" href="./style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>🎓 UGC NET Hindi Master</title>
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="UGC NET हिंदी साहित्य की तैयारी के लिए सर्वश्रेष्ठ ऑफलाइन पीडब्ल्यूए (PWA) ऐप। अभ्यास, मॉक टेस्ट और सांख्यिकी।">
+  <meta name="theme-color" content="#7C3AED">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Hindi Master">
+  
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./style.css">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-<header>
-<h1>🎓 UGC NET Hindi Master</h1>
-<div id="stats"></div>
-</header>
-<input id="search" placeholder="Search questions/topics...">
-<div id="topicsGrid"></div>
-<script src="./script.js"></script>
+
+  <!-- App Header -->
+  <header class="app-header" role="banner">
+    <div class="header-main">
+      <h1 class="logo-title">🎓 NET Hindi Master</h1>
+      <div class="header-actions">
+        <button id="theme-toggle" class="btn-icon" aria-label="थीम बदलें" title="डार्क/लाइट मोड">
+          <!-- Light Mode Icon (Sun) -->
+          <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 12m-4 0a4 4 0 1 0 8 0 8 0 1 0 -8 0M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <!-- Dark Mode Icon (Moon) -->
+          <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><path d="M12 3c.132 0 .263 0 .393.007a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 2.992z"/></svg>
+        </button>
+        <button id="contrast-toggle" class="btn-icon" aria-label="हाई कंट्रास्ट मोड" title="उच्च कंट्रास्ट">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v20M12 2a10 10 0 0 1 0 20"/></svg>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Header Progress Status -->
+    <div class="user-level-badge" id="level-badge-container">
+      <div class="level-info">
+        <span class="level-title">लेवल <strong id="header-level-val">1</strong></span>
+        <span class="xp-val" id="header-xp-val">0 / 100 XP</span>
+      </div>
+      <div class="xp-bar-outer" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="header-xp-bar-desc">
+        <div class="xp-bar-inner" id="header-xp-progress" style="width: 0%;"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Network Offline Banner -->
+  <div id="offline-banner" class="offline-banner" style="display: none;" role="alert">
+    <span>📴 आप ऑफलाइन हैं। केवल पूर्व-लोड किए गए और कैश्ड टॉपिक्स ही उपलब्ध हैं।</span>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Main View Area (SPA Tabs) -->
+  <main class="app-main" id="main-content">
+    
+    <!-- TAB 1: HOME -->
+    <section id="tab-home" class="tab-panel active" role="tabpanel">
+      <!-- Streak Banner -->
+      <div id="streak-banner" class="streak-banner animate-pop" style="display: none;">
+        <span class="streak-emoji">🔥</span>
+        <div class="streak-text">
+          <strong><span id="streak-days-count">0</span>-दिन का लगातार अभ्यास!</strong>
+          <span class="subtext">अपना दैनिक अभ्यास जारी रखें!</span>
+        </div>
+      </div>
+
+      <!-- Quick Statistics Cards Grid -->
+      <h2 class="section-title">📊 मुख्य सांख्यिकी</h2>
+      <div class="stats-grid">
+        <div class="stats-card">
+          <span class="stats-icon">📚</span>
+          <span class="stats-value" id="stats-total-topics">-</span>
+          <span class="stats-label">कुल विषय</span>
+        </div>
+        <div class="stats-card">
+          <span class="stats-icon">❓</span>
+          <span class="stats-value" id="stats-total-questions">-</span>
+          <span class="stats-label">कुल प्रश्न</span>
+        </div>
+        <div class="stats-card">
+          <span class="stats-icon">✅</span>
+          <span class="stats-value" id="stats-solved-questions">0</span>
+          <span class="stats-label">हल किए प्रश्न</span>
+        </div>
+        <div class="stats-card">
+          <span class="stats-icon">🎯</span>
+          <span class="stats-value" id="stats-accuracy">0%</span>
+          <span class="stats-label">शुद्धता</span>
+        </div>
+        <div class="stats-card">
+          <span class="stats-icon">🏆</span>
+          <span class="stats-value" id="stats-best-score">0</span>
+          <span class="stats-label">सर्वश्रेष्ठ स्कोर</span>
+        </div>
+        <div class="stats-card">
+          <span class="stats-icon">⚡</span>
+          <span class="stats-value" id="stats-streak">0</span>
+          <span class="stats-label">वर्तमान लकीर</span>
+        </div>
+      </div>
+
+      <!-- Quick Quizzes Modes Grid -->
+      <h2 class="section-title">⚡ त्वरित अभ्यास मोड</h2>
+      <div class="modes-grid">
+        <button class="mode-action-card practice-mode-btn" id="btn-quick-mock" aria-label="Mock Test">
+          <span class="action-icon">🎯</span>
+          <div class="action-desc">
+            <h3>मॉक टेस्ट (Mock Test)</h3>
+            <p>सभी विषयों से रैंडम प्रश्नोत्तरी</p>
+          </div>
+        </button>
+        <button class="mode-action-card timed-mode-btn" id="btn-quick-timed" aria-label="Timed Test">
+          <span class="action-icon">⏱️</span>
+          <div class="action-desc">
+            <h3>समयबद्ध परीक्षा (Timed Test)</h3>
+            <p>उल्टी गिनती टाइमर के साथ परीक्षण</p>
+          </div>
+        </button>
+        <button class="mode-action-card revision-mode-btn" id="btn-quick-revision" aria-label="Revision Mode">
+          <span class="action-icon">🔄</span>
+          <div class="action-desc">
+            <h3>पुनरावृत्ति (Revision Mode)</h3>
+            <p>गलत और अन-अटेम्प्टेड प्रश्न</p>
+          </div>
+        </button>
+      </div>
+
+      <!-- Topic Grid Cards Section -->
+      <h2 class="section-title">📚 पाठ्यक्रम विषय (Topics)</h2>
+      <div id="topics-grid" class="topics-grid">
+        <!-- JS will dynamically load cards -->
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+      </div>
+    </section>
+
+    <!-- TAB 2: SEARCH -->
+    <section id="tab-search" class="tab-panel" role="tabpanel" style="display: none;">
+      <h2 class="section-title">🔍 प्रश्न एवं विषय खोजें</h2>
+      <div class="search-bar-container">
+        <input type="search" id="search-input" placeholder="प्रश्नों, विषयों या कीवर्ड द्वारा खोजें..." aria-label="सर्च बॉक्स">
+        <div id="search-loader" class="search-loader" style="display: none;">
+          <div class="spinner"></div>
+          <span>इंडेक्सिंग जारी है...</span>
+        </div>
+      </div>
+      
+      <div id="search-stats" class="search-stats"></div>
+      
+      <div id="search-results" class="search-results-list">
+        <div class="empty-state">
+          <span class="empty-icon">🔍</span>
+          <p>सर्च करने के लिए टाइप करना शुरू करें। प्रश्न का पाठ या विकल्प खोजे जा सकते हैं।</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: FAVORITES -->
+    <section id="tab-favorites" class="tab-panel" role="tabpanel" style="display: none;">
+      <div class="favorites-header">
+        <h2 class="section-title">⭐ पसंदीदा प्रश्न (Favorites)</h2>
+        <button id="btn-start-favorites-quiz" class="btn-primary btn-sm" style="display: none;">
+          <span>▶️</span> पसंदीदा प्रश्नों का टेस्ट
+        </button>
+      </div>
+
+      <div id="favorites-list" class="favorites-list-container">
+        <div class="empty-state">
+          <span class="empty-icon">⭐</span>
+          <p>पसंदीदा सूची खाली है। अभ्यास करते समय प्रश्नों को बुकमार्क करने के लिए तारा (⭐) आइकन का उपयोग करें।</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: STATISTICS / DETAILED PROGRESS -->
+    <section id="tab-stats" class="tab-panel" role="tabpanel" style="display: none;">
+      <h2 class="section-title">📊 विस्तृत प्रगति विवरण</h2>
+      
+      <!-- LEVEL STAT CARD -->
+      <div class="level-progress-large">
+        <div class="level-circle">
+          <span class="circle-level-val" id="stats-level-val">1</span>
+          <span class="circle-level-label">लेवल</span>
+        </div>
+        <div class="xp-details-large">
+          <h3>कुल XP: <span id="stats-xp-total">0</span></h3>
+          <p>अगले लेवल के लिए आवश्यक: <span id="stats-xp-needed">100 XP</span></p>
+          <div class="xp-bar-outer large-bar">
+            <div class="xp-bar-inner" id="stats-xp-progress-large" style="width: 0%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PERFORMANCE STATS LIST -->
+      <div class="performance-list">
+        <div class="perf-item">
+          <span>कुल प्रयास (Total Quiz Completed):</span>
+          <strong id="stats-total-quizzes">0</strong>
+        </div>
+        <div class="perf-item">
+          <span>कुल सही उत्तर (Correct Answers):</span>
+          <strong id="stats-correct-answers">0</strong>
+        </div>
+        <div class="perf-item">
+          <span>उच्चतम लकीर (Highest Streak):</span>
+          <strong id="stats-highest-streak">0 दिन</strong>
+        </div>
+      </div>
+
+      <!-- REVISION CORNER -->
+      <h2 class="section-title">🔄 कमजोरियां और सुधार (Revision)</h2>
+      <div class="revision-summary-box">
+        <div class="rev-stat">
+          <span class="rev-num" id="rev-wrong-count">0</span>
+          <span class="rev-label">गलत प्रश्न</span>
+        </div>
+        <div class="rev-stat">
+          <span class="rev-num" id="rev-unattempted-count">0</span>
+          <span class="rev-label">अन-अटेम्प्टेड</span>
+        </div>
+      </div>
+
+      <div class="weak-topics-section">
+        <h3>🚨 कमजोर विषय (कम शुद्धता वाले)</h3>
+        <div id="weak-topics-list" class="weak-topics-list">
+          <div class="empty-state-small">यहाँ कमजोर विषय दिखाई देंगे जब आप टेस्ट पूरा करेंगे।</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Navigation Bar (Mobile First Bottom Bar) -->
+  <nav class="bottom-nav" role="navigation" aria-label="मुख्य नेविगेशन">
+    <button class="nav-item active" data-tab="tab-home" aria-selected="true" role="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>होम</span>
+    </button>
+    <button class="nav-item" data-tab="tab-search" aria-selected="false" role="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span>खोज</span>
+    </button>
+    <button class="nav-item" data-tab="tab-favorites" aria-selected="false" role="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      <span>पसंदीदा</span>
+    </button>
+    <button class="nav-item" data-tab="tab-stats" aria-selected="false" role="tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>प्रगति</span>
+    </button>
+  </nav>
+
+  <!-- ================= DIALOGUES & MODALS ================= -->
+
+  <!-- TOPIC OPTIONS CONFIG MODAL -->
+  <div id="topic-modal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="modal-topic-title">
+    <div class="modal-content animate-slide-up">
+      <div class="modal-header">
+        <h2 id="modal-topic-title">📚 विषय विवरण</h2>
+        <button id="btn-close-topic-modal" class="btn-icon" aria-label="बंद करें">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-topic-meta" id="modal-topic-desc">...</p>
+        
+        <div class="modal-settings-group">
+          <h3>🎮 टेस्ट मोड चुनें:</h3>
+          <div class="mode-selectors">
+            <label class="mode-select-option">
+              <input type="radio" name="quiz-mode" value="practice" checked>
+              <span class="mode-select-card">
+                <span class="mode-badge-icon">📖</span>
+                <span class="mode-badge-title">अभ्यास (Practice Mode)</span>
+                <span class="mode-badge-desc">हर प्रश्न के बाद उत्तर और व्याख्या देखें, बिना समय सीमा के।</span>
+              </span>
+            </label>
+            
+            <label class="mode-select-option">
+              <input type="radio" name="quiz-mode" value="timed">
+              <span class="mode-select-card">
+                <span class="mode-badge-icon">⏱️</span>
+                <span class="mode-badge-title">समयबद्ध परीक्षा (Timed Test)</span>
+                <span class="mode-badge-desc">निर्धारित समय में हल करें। समाप्त होने पर सबमिट होगा।</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Timed settings (hidden unless timed selected) -->
+        <div class="timed-settings-box" id="timed-settings-box" style="display: none;">
+          <h3>⏱️ समय सीमा:</h3>
+          <div class="time-presets">
+            <label class="preset-pill"><input type="radio" name="time-limit" value="15" checked><span>15 मिनट</span></label>
+            <label class="preset-pill"><input type="radio" name="time-limit" value="30"><span>30 मिनट</span></label>
+            <label class="preset-pill"><input type="radio" name="time-limit" value="60"><span>60 मिनट</span></label>
+            <label class="preset-pill custom-limit-label">
+              <input type="radio" name="time-limit" value="custom" id="radio-custom-time">
+              <span>कस्टम: <input type="number" id="input-custom-time" min="1" max="180" value="5" class="small-input" aria-label="कस्टम मिनट"> मि.</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="quiz-options-checkboxes">
+          <label class="checkbox-wrapper">
+            <input type="checkbox" id="chk-shuffle-questions" checked>
+            <span class="checkbox-label">प्रश्नों का क्रम बदलें (Shuffle Questions)</span>
+          </label>
+          <label class="checkbox-wrapper">
+            <input type="checkbox" id="chk-shuffle-options" checked>
+            <span class="checkbox-label">विकल्पों का क्रम बदलें (Shuffle Options)</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-start-quiz" class="btn-primary btn-block">🚀 टेस्ट शुरू करें</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOCK TEST OPTIONS CONFIG MODAL -->
+  <div id="mock-modal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="modal-mock-title">
+    <div class="modal-content animate-slide-up">
+      <div class="modal-header">
+        <h2 id="modal-mock-title">🎯 मॉक टेस्ट शुरू करें</h2>
+        <button id="btn-close-mock-modal" class="btn-icon" aria-label="बंद करें">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>मॉक टेस्ट में सभी उपलब्ध विषयों से बेतरतीब (randomized) प्रश्न चुने जाएंगे।</p>
+        
+        <div class="modal-settings-group">
+          <h3>📝 प्रश्नों की संख्या:</h3>
+          <div class="mock-presets">
+            <label class="preset-pill"><input type="radio" name="mock-count" value="25" checked><span>25 प्रश्न</span></label>
+            <label class="preset-pill"><input type="radio" name="mock-count" value="50"><span>50 प्रश्न</span></label>
+            <label class="preset-pill"><input type="radio" name="mock-count" value="100"><span>100 प्रश्न</span></label>
+          </div>
+        </div>
+
+        <div class="modal-settings-group">
+          <h3>🎮 परीक्षा का तरीका:</h3>
+          <div class="mode-selectors">
+            <label class="mode-select-option">
+              <input type="radio" name="mock-mode" value="practice">
+              <span class="mode-select-card">
+                <span class="mode-badge-icon">📖</span>
+                <span class="mode-badge-title">अभ्यास (Practice Mode)</span>
+              </span>
+            </label>
+            
+            <label class="mode-select-option">
+              <input type="radio" name="mock-mode" value="timed" checked>
+              <span class="mode-select-card">
+                <span class="mode-badge-icon">⏱️</span>
+                <span class="mode-badge-title">समयबद्ध परीक्षा (Timed Test)</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="mock-time-settings" id="mock-time-settings">
+          <h3>⏱️ समय सीमा:</h3>
+          <div class="time-presets">
+            <label class="preset-pill"><input type="radio" name="mock-time" value="15"><span>15 मिनट</span></label>
+            <label class="preset-pill"><input type="radio" name="mock-time" value="30" checked><span>30 मिनट</span></label>
+            <label class="preset-pill"><input type="radio" name="mock-time" value="60"><span>60 मिनट</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-start-mock" class="btn-primary btn-block">🎯 मॉक टेस्ट शुरू करें</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEVEL UP CELEBRATION MODAL -->
+  <div id="level-modal" class="modal-overlay level-up-overlay" style="display: none;" role="dialog" aria-modal="true">
+    <div class="modal-content level-up-content animate-pop">
+      <div class="confetti-container">🎉 ✨ 🎈 🥳 🌟</div>
+      <h2>लेवल अप! 🎉</h2>
+      <p class="congrats-text">बधाई हो! आपका नया स्तर है:</p>
+      <div class="level-up-badge">
+        <span id="level-up-val">2</span>
+      </div>
+      <p class="level-up-subtext">आपकी लगन और ज्ञान में सुधार हो रहा है। लगातार अभ्यास जारी रखें!</p>
+      <button id="btn-close-level-modal" class="btn-primary">धन्यवाद</button>
+    </div>
+  </div>
+
+  <!-- QUIZ END RESULT PANEL -->
+  <div id="result-overlay" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="result-title">
+    <div class="modal-content animate-slide-up">
+      <div class="modal-header">
+        <h2 id="result-title">📝 परीक्षा का परिणाम</h2>
+      </div>
+      <div class="modal-body result-body">
+        <div class="score-ring-container">
+          <div class="score-ring">
+            <span class="score-ring-pct" id="result-pct">0%</span>
+            <span class="score-ring-ratio" id="result-ratio">0/0</span>
+          </div>
+        </div>
+
+        <div class="result-details-grid">
+          <div class="res-stat-card">
+            <span class="res-icon">⏱️</span>
+            <span class="res-val" id="result-time">00:00</span>
+            <span class="res-lbl">लिया गया समय</span>
+          </div>
+          <div class="res-stat-card">
+            <span class="res-icon">⭐</span>
+            <span class="res-val" id="result-xp-earned">+0 XP</span>
+            <span class="res-lbl">अर्जित XP</span>
+          </div>
+        </div>
+
+        <div class="result-feedback" id="result-feedback-text">
+          शानदार प्रयास!
+        </div>
+
+        <div class="result-breakdown-list">
+          <div class="breakdown-item">
+            <span>कुल प्रश्न:</span>
+            <strong id="res-total">0</strong>
+          </div>
+          <div class="breakdown-item">
+            <span>सही उत्तर:</span>
+            <strong id="res-correct" class="text-success">0</strong>
+          </div>
+          <div class="breakdown-item">
+            <span>गलत उत्तर:</span>
+            <strong id="res-wrong" class="text-danger">0</strong>
+          </div>
+          <div class="breakdown-item">
+            <span>अछूते (Unattempted):</span>
+            <strong id="res-unattempted" class="text-muted">0</strong>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer flex-column">
+        <button id="btn-result-review" class="btn-secondary btn-block">🔍 प्रश्नों की समीक्षा करें</button>
+        <button id="btn-result-close" class="btn-primary btn-block">🏠 होम स्क्रीन पर जाएं</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================= FULLSCREEN QUIZ ARENA ================= -->
+  <div id="quiz-arena" class="quiz-arena" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="arena-question-heading">
+    <!-- Quiz Header -->
+    <header class="quiz-arena-header">
+      <div class="quiz-header-top">
+        <button id="btn-quit-quiz" class="btn-icon text-muted" aria-label="प्रश्नोत्तरी बंद करें" title="बंद करें">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <div class="quiz-meta-info">
+          <span id="quiz-mode-title" class="quiz-mode-pill">Practice Mode</span>
+          <span id="quiz-topic-title" class="quiz-topic-lbl">विषय का नाम</span>
+        </div>
+        <div id="quiz-timer" class="quiz-timer-pill" style="display: none;">
+          ⏱️ <span id="quiz-timer-val">00:00</span>
+        </div>
+      </div>
+      
+      <!-- Progress Bar -->
+      <div class="quiz-progress-bar-container">
+        <div class="quiz-progress-bar-inner" id="quiz-bar" style="width: 0%;"></div>
+      </div>
+
+      <div class="quiz-progress-fraction">
+        <span>प्रश्न <strong id="quiz-curr-idx">1</strong> / <span id="quiz-total-cnt">10</span></span>
+        <span id="quiz-accuracy-indicator" style="display: none;">🎯 शुद्धता: 100%</span>
+      </div>
+    </header>
+
+    <!-- Quiz Question Arena -->
+    <div class="quiz-question-scroller">
+      <section class="question-container">
+        <!-- Question Badge (e.g. Question 1, Marked for review) -->
+        <div class="question-badge-row">
+          <span class="q-difficulty-badge">UGC NET पैटर्न</span>
+          <div class="q-badges">
+            <span id="badge-marked-review" class="badge-review-tag" style="display: none;">⚠️ समीक्षा के लिए चिह्नित</span>
+          </div>
+        </div>
+
+        <h2 id="arena-question-heading" class="question-text">प्रश्न यहाँ लोड होगा...</h2>
+        
+        <!-- Options List -->
+        <div id="quiz-options-list" class="options-container" role="radiogroup" aria-label="उत्तर के विकल्प">
+          <!-- JS will populate options -->
+        </div>
+
+        <!-- Explanation Panel -->
+        <div id="explanation-panel" class="explanation-card animate-slide-up" style="display: none;">
+          <div class="expl-header">
+            <h4>💡 उत्तर की व्याख्या (Explanation):</h4>
+          </div>
+          <div class="expl-body" id="explanation-text">
+            व्याख्या यहाँ दिखाई देगी।
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Quiz Navigation Footer Controls -->
+    <footer class="quiz-arena-footer">
+      <div class="control-row">
+        <!-- Bookmark / Favorite Button -->
+        <button id="btn-quiz-bookmark" class="btn-outline-icon" aria-label="पसंदीदा में जोड़ें" title="बुकमार्क">
+          <svg id="svg-bookmark-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </button>
+
+        <!-- Mark for Review Button -->
+        <button id="btn-quiz-mark-review" class="btn-outline-pill" aria-label="समीक्षा के लिए चिह्नित करें">
+          <span>⚠️</span> समीक्षा करें
+        </button>
+
+        <!-- Question Navigator Drawer Toggle -->
+        <button id="btn-toggle-navigator" class="btn-outline-pill" aria-label="प्रश्न सूची">
+          <span>📋</span> <span id="btn-nav-label">सूची (1/10)</span>
+        </button>
+      </div>
+
+      <div class="action-buttons-row">
+        <button id="btn-quiz-prev" class="btn-secondary btn-flex" disabled>
+          ◀️ पिछला
+        </button>
+        <button id="btn-quiz-next" class="btn-primary btn-flex">
+          अगला ▶️
+        </button>
+        <button id="btn-quiz-submit" class="btn-primary btn-flex bg-success" style="display: none;">
+          ✅ सबमिट करें
+        </button>
+      </div>
+
+      <!-- Expandable Question Navigator Drawer Grid -->
+      <div id="question-navigator-drawer" class="navigator-drawer" style="display: none;">
+        <div class="drawer-header">
+          <h3>📋 प्रश्न नेविगेटर</h3>
+          <div class="legend">
+            <span class="legend-item"><span class="legend-dot current"></span> वर्तमान</span>
+            <span class="legend-item"><span class="legend-dot attempted"></span> उत्तरित</span>
+            <span class="legend-item"><span class="legend-dot flagged"></span> समीक्षा</span>
+            <span class="legend-item"><span class="legend-dot unattempted"></span> बचे हुए</span>
+          </div>
+        </div>
+        <div id="navigator-grid" class="navigator-grid">
+          <!-- JS will populate -->
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script src="./script.js"></script>
 </body>
 </html>
