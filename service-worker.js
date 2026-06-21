@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ugc-net-hindi-v1';
+const CACHE_NAME = 'ugc-net-hindi-v2';
 const STATIC_ASSETS = [
   './',
   './index.html',

@@ -1,5 +1,5 @@
 /**
- * UGC NET Hindi Master PWA Logic
+ * UGC Net PWA Logic
  * Pure Vanilla ES6+ JavaScript - Production Ready
  */
 
@@ -323,12 +323,14 @@ const RevisionManager = {
 // 6. QUESTION LOADER MODULE
 // ==========================================================================
 const QuestionLoader = {
-  formatTopicName(topicKey) {
-    if (topicNamesMap[topicKey]) {
-      return topicNamesMap[topicKey];
-    }
-    // Fallback formatting: acharya-shukla -> Acharya Shukla
-    return topicKey
+  formatTopicName(topicFileKey) {
+    // topicFileKey is a string like 'bhaktikal'
+    // Find display name from topicsList first
+    const found = topicsList.find(t => t.file === topicFileKey);
+    if (found) return found.topic;
+    if (topicNamesMap[topicFileKey]) return topicNamesMap[topicFileKey];
+    // Fallback: acharya-shukla -> Acharya Shukla
+    return topicFileKey
       .split('-')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
@@ -347,27 +349,30 @@ const QuestionLoader = {
     }
   },
 
-  async loadQuestionsForTopic(topicKey) {
+  async loadQuestionsForTopic(topicFileKey) {
+    // topicFileKey must always be a string (the filename without .json)
+    const key = typeof topicFileKey === 'object' ? topicFileKey.file : topicFileKey;
+
     // Return from cache if already loaded
-    if (allQuestionsCache[topicKey]) {
-      return allQuestionsCache[topicKey];
+    if (allQuestionsCache[key]) {
+      return allQuestionsCache[key];
     }
 
     try {
-      const response = await fetch(`./questions/${topicKey}.json`);
-      if (!response.ok) throw new Error(`Failed to load questions for ${topicKey}`);
+      const response = await fetch(`./questions/${key}.json`);
+      if (!response.ok) throw new Error(`Failed to load questions for ${key}`);
       const list = await response.json();
       
       // Inject topic tag on each question for referencing later
       list.forEach(q => {
-        q.topic = topicKey;
+        q.topic = key;
       });
 
-      allQuestionsCache[topicKey] = list;
+      allQuestionsCache[key] = list;
       return list;
     } catch (err) {
       console.error(err);
-      UIRenderer.showToast(`विषय ${topicKey} के प्रश्न लोड करने में त्रुटि`, 'error');
+      UIRenderer.showToast(`विषय '${key}' के प्रश्न लोड करने में त्रुटि`, 'error');
       return [];
     }
   },
@@ -390,14 +395,15 @@ const QuestionLoader = {
   async backgroundLoadCounts(cachedCounts) {
     let updated = false;
     for (const topic of topicsList) {
+      const key = topic.file;
       try {
-        const questions = await this.loadQuestionsForTopic(topic);
-        if (cachedCounts[topic] !== questions.length) {
-          cachedCounts[topic] = questions.length;
+        const questions = await this.loadQuestionsForTopic(key);
+        if (cachedCounts[key] !== questions.length) {
+          cachedCounts[key] = questions.length;
           updated = true;
         }
       } catch (e) {
-        console.warn(`Failed bg-load for topic: ${topic}`, e);
+        console.warn(`Failed bg-load for topic: ${key}`, e);
       }
     }
 
@@ -421,7 +427,7 @@ const SearchEngine = {
 
     // Fetch and load all topics into memory
     for (const topic of topicsList) {
-      await QuestionLoader.loadQuestionsForTopic(topic);
+      await QuestionLoader.loadQuestionsForTopic(topic.file);
     }
 
     // Build the flat search index
@@ -996,34 +1002,40 @@ const UIRenderer = {
     const grid = document.getElementById('topics-grid');
     grid.innerHTML = '';
 
-    topicsList.forEach(topicKey => {
+    topicsList.forEach(topic => {
+      const key = topic.file;
+      const displayName = topic.topic;
+      const icon = topic.icon || '📚';
+      const desc = topic.desc || '';
+
       const card = document.createElement('div');
       card.className = 'topic-card animate-pop';
       card.setAttribute('role', 'button');
       card.setAttribute('tabindex', '0');
-      card.setAttribute('aria-label', `${QuestionLoader.formatTopicName(topicKey)} विषय`);
+      card.setAttribute('aria-label', `${displayName} विषय`);
 
-      const count = cachedCounts[topicKey] !== undefined ? `${cachedCounts[topicKey]} प्रश्न` : 'गिनती लोड हो रही है...';
+      const count = cachedCounts[key] !== undefined ? `${cachedCounts[key]} प्रश्न` : 'गिनती लोड हो रही है...';
       
       card.innerHTML = `
         <div class="topic-title-area">
-          <span class="topic-emoji">📚</span>
+          <span class="topic-emoji">${icon}</span>
           <div>
-            <h3 class="topic-name">${QuestionLoader.formatTopicName(topicKey)}</h3>
+            <h3 class="topic-name">${displayName}</h3>
+            <p class="topic-desc">${desc}</p>
           </div>
         </div>
         <div class="topic-meta-row">
           <span class="topic-qcount">${count}</span>
-          <span class="topic-solved-percent" id="solved-pct-${topicKey}"></span>
+          <span class="topic-solved-percent" id="solved-pct-${key}"></span>
         </div>
       `;
 
       // Event Click triggers configuration options
-      card.onclick = () => this.openTopicModal(topicKey, count);
+      card.onclick = () => this.openTopicModal(key, displayName, count);
       card.onkeydown = (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          this.openTopicModal(topicKey, count);
+          this.openTopicModal(key, displayName, count);
         }
       };
 
@@ -1032,9 +1044,9 @@ const UIRenderer = {
   },
 
   // Open starting Modal configurator for topics
-  openTopicModal(topicKey, countText) {
+  openTopicModal(topicKey, displayName, countText) {
     const modal = document.getElementById('topic-modal');
-    document.getElementById('modal-topic-title').textContent = QuestionLoader.formatTopicName(topicKey);
+    document.getElementById('modal-topic-title').textContent = displayName;
     document.getElementById('modal-topic-desc').textContent = `${countText} • अभ्यास करने या समयबद्ध परीक्षा देने के लिए चुनें।`;
     
     // Start Quiz Action
@@ -1061,7 +1073,7 @@ const UIRenderer = {
       QuizEngine.startQuiz(questions, {
         mode: isTimed ? 'timed' : 'practice',
         topic: topicKey,
-        sourceTopicName: QuestionLoader.formatTopicName(topicKey),
+        sourceTopicName: displayName,
         shuffleQuestions: shuffleQ,
         shuffleOptions: shuffleO,
         timeLimitMinutes: timeLimit
@@ -1090,7 +1102,7 @@ const UIRenderer = {
       // 1. Gather questions from all topics
       let allQuestions = [];
       for (const topic of topicsList) {
-        const list = await QuestionLoader.loadQuestionsForTopic(topic);
+        const list = await QuestionLoader.loadQuestionsForTopic(topic.file);
         allQuestions = allQuestions.concat(list);
       }
 
