@@ -685,7 +685,7 @@ h1,h2,h3,h4 { font-weight: 700; }
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.5);
-  z-index: 500;
+  z-index: 850; /* above quiz arena and sidebar */
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -831,14 +831,20 @@ h1,h2,h3,h4 { font-weight: 700; }
 .result-fullscreen {
   position: fixed;
   inset: 0;
-  z-index: 600;
+  z-index: 950; /* above sidebar, above everything */
   background: var(--bg);
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 .result-page {
+  width: 100%;
+  max-width: 640px;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  padding-bottom: 32px;
 }
 
 /* Top band - dynamic background based on score */
@@ -846,6 +852,8 @@ h1,h2,h3,h4 { font-weight: 700; }
   padding: 50px 24px 36px;
   text-align: center;
   position: relative;
+  background: linear-gradient(160deg, #374151, #6B7280); /* default gray */
+  width: 100%;
 }
 .result-top-band.band-gold   { background: linear-gradient(160deg, #7C3AED, #EC4899); }
 .result-top-band.band-green  { background: linear-gradient(160deg, #059669, #10B981); }
@@ -942,6 +950,8 @@ h1,h2,h3,h4 { font-weight: 700; }
   flex-direction: column;
   gap: 10px;
   margin-top: auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ─── Quiz Arena ─── */
@@ -949,7 +959,7 @@ h1,h2,h3,h4 { font-weight: 700; }
   position: fixed;
   inset: 0;
   background: var(--bg);
-  z-index: 400;
+  z-index: 800; /* above sidebar on desktop */
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1523,9 +1533,9 @@ h1,h2,h3,h4 { font-weight: 700; }
   .hsc-val { font-size: 1.5rem; }
   .hsc-icon { font-size: 1.4rem; }
 
-  /* Quiz arena — constrained width on large screens */
+  /* Quiz arena covers full screen on desktop — content centered inside */
   .quiz-arena {
-    left: 220px; /* offset for sidebar */
+    left: 0;
   }
   .quiz-scroll-area {
     max-width: 800px;
@@ -1534,13 +1544,9 @@ h1,h2,h3,h4 { font-weight: 700; }
   }
   .question-heading { font-size: 1.2rem; }
 
-  /* Result overlay — sidebar offset */
-  .result-overlay, #result-overlay {
-    left: 220px;
-  }
+  /* Result overlay covers full screen on desktop — content centered inside */
   .result-page {
     max-width: 700px;
-    margin: 0 auto;
   }
 
   /* Modals stay centered */

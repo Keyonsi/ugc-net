@@ -1155,7 +1155,7 @@ const UIRenderer = {
     document.getElementById('quiz-arena').style.display = 'none';
     document.body.style.overflow = 'auto';
     const overlay = document.getElementById('result-overlay');
-    overlay.style.display = 'block';
+    overlay.style.display = 'flex';
 
     // Calculate percentage
     const pct = res.total > 0 ? Math.round((res.correct / res.total) * 100) : 0;
@@ -1171,10 +1171,48 @@ const UIRenderer = {
     document.getElementById('res-wrong').textContent = res.wrong;
     document.getElementById('res-unattempted').textContent = res.unattempted;
 
-    // Feedback message logic
+    // Set dynamic top band color + emoji + title based on score
+    const topBand = document.getElementById('result-top-band');
+    topBand.className = 'result-top-band'; // reset
+    const emojiEl  = document.getElementById('result-emoji-big');
+    const titleEl  = document.getElementById('result-title-text');
+    const motivEl  = document.getElementById('result-motivate-msg');
+
+    if (pct === 100) {
+      topBand.classList.add('band-gold');
+      emojiEl.textContent  = '🥇';
+      titleEl.textContent  = 'परफेक्ट स्कोर!';
+      motivEl.textContent  = 'अविश्वसनीय! आपने सभी प्रश्न सही किए!';
+    } else if (pct >= 80) {
+      topBand.classList.add('band-green');
+      emojiEl.textContent  = '🌟';
+      titleEl.textContent  = 'बेहतरीन!';
+      motivEl.textContent  = 'शानदार प्रदर्शन! आप परीक्षा के बहुत करीब हैं।';
+    } else if (pct >= 50) {
+      topBand.classList.add('band-blue');
+      emojiEl.textContent  = '👍';
+      titleEl.textContent  = 'अच्छा किया!';
+      motivEl.textContent  = 'अच्छा प्रयास! और अभ्यास से और बेहतर होंगे।';
+    } else {
+      topBand.classList.add('band-gray');
+      emojiEl.textContent  = '📚';
+      titleEl.textContent  = 'अभ्यास जारी रखें!';
+      motivEl.textContent  = 'हार मत मानो! पुनरावृत्ति मोड से सुधार करें।';
+    }
+
+    // Animate score arc circle
+    const arcEl = document.getElementById('score-arc');
+    const circumference = 2 * Math.PI * 52; // r=52 → ~326.7
+    arcEl.style.strokeDasharray = `0 ${circumference}`;
+    setTimeout(() => {
+      arcEl.style.transition = 'stroke-dasharray 1.2s ease';
+      arcEl.style.strokeDasharray = `${(pct / 100) * circumference} ${circumference}`;
+    }, 150);
+
+    // Feedback text
     let feedback = 'शानदार प्रयास!';
     if (pct === 100) feedback = '🥇 सर्वोत्कृष्ट! पूर्ण अंक मिले हैं!';
-    else if (pct >= 80) feedback = '🌟 बेहतरीन काम! परीक्षा पास करने के बहुत करीब हैं।';
+    else if (pct >= 80) feedback = '🌟 बेहतरीन! परीक्षा पास करने के बहुत करीब हैं।';
     else if (pct >= 50) feedback = '👍 अच्छा प्रयास! कमजोरी सुधारने के लिए अभ्यास जारी रखें।';
     else feedback = '📚 और अभ्यास की आवश्यकता है। पुनरावृत्ति मोड का उपयोग करें।';
 
@@ -1200,6 +1238,7 @@ const UIRenderer = {
       document.querySelector('.bottom-nav .nav-item[data-tab="tab-home"]').click();
     };
   },
+
 
   // Render general statistics across screens
   renderStats() {
