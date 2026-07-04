@@ -1323,3 +1323,260 @@ h1,h2,h3,h4 { font-weight: 700; }
   transition: width 0.8s ease;
 }
 .large-bar { height: 8px; }
+
+/* ─── Result Feedback Text ─── */
+.result-feedback {
+  text-align: center;
+  padding: 10px 24px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-family: var(--font-hindi);
+  line-height: 1.6;
+}
+
+/* =====================================================================
+   RESPONSIVE BREAKPOINTS
+   Mobile-first → Tablet (≥600px) → Desktop (≥1024px)
+   ===================================================================== */
+
+/* ─── Tablet (≥600px) ─── */
+@media (min-width: 600px) {
+  :root {
+    --nav-h: 72px;
+    --header-h: 68px;
+  }
+
+  body {
+    font-size: 16px;
+  }
+
+  /* Center the whole app content with a max width */
+  .app-header {
+    padding: 14px 24px 12px;
+  }
+
+  .app-main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 8px;
+  }
+
+  /* Hero stats — 4 columns already, but bigger on tablet */
+  .hero-stats-row {
+    padding: 16px 0 8px;
+    gap: 12px;
+  }
+  .hero-stat-card {
+    padding: 16px 10px;
+  }
+  .hsc-val  { font-size: 1.2rem; }
+  .hsc-lbl  { font-size: 0.7rem; }
+
+  /* Quick actions — horizontal row on tablet */
+  .quick-actions-grid {
+    flex-direction: row;
+    padding: 0;
+  }
+  .qa-card { flex: 1; }
+
+  /* Topics grid — 2 columns on tablet */
+  .topics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    padding: 0 0 8px;
+  }
+
+  /* Section titles */
+  .section-title {
+    font-size: 1.05rem;
+    margin: 24px 0 12px;
+    padding: 0;
+  }
+
+  /* Bottom nav bigger */
+  .bottom-nav {
+    max-width: 720px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 20px 20px 0 0;
+  }
+  .nav-item { font-size: 0.72rem; }
+  .nav-item svg { width: 24px; height: 24px; }
+
+  /* Modals */
+  .modal-sheet {
+    max-width: 560px;
+    border-radius: var(--radius-xl);
+    margin-bottom: 24px;
+  }
+  .modal-overlay { align-items: center; }
+
+  /* Quiz arena header */
+  .quiz-arena-header {
+    padding: 16px 24px 12px;
+  }
+  .question-heading { font-size: 1.15rem; }
+  .quiz-option { font-size: 0.95rem; padding: 16px 18px; }
+
+  /* Result screen */
+  .result-page {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .result-top-band { padding: 60px 32px 40px; }
+  .result-title-text { font-size: 2rem; }
+
+  /* Performance grid — 3 columns */
+  .perf-grid { grid-template-columns: repeat(3, 1fr); }
+
+  /* Search */
+  .search-bar-wrap { margin: 0 0 12px; }
+  .search-results-list { padding: 0; }
+}
+
+/* ─── Desktop (≥1024px) ─── */
+@media (min-width: 1024px) {
+  :root {
+    --header-h: 72px;
+    --nav-h: 76px;
+  }
+
+  body {
+    /* Side padding to create sidebar-like feel */
+    padding-bottom: 0;
+  }
+
+  /* Desktop layout: header full-width, content + nav in center column */
+  .app-header {
+    max-width: 100%;
+    padding: 16px 32px;
+  }
+  .header-main {
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  /* Sidebar-style nav on desktop */
+  .bottom-nav {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    top: auto;
+    width: 220px;
+    height: auto;
+    min-height: 100vh;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: calc(var(--header-h) + 20px) 0 20px;
+    border-top: none;
+    border-right: 1px solid var(--border);
+    border-radius: 0;
+    transform: none;
+    max-width: none;
+    box-shadow: var(--shadow-sm);
+    gap: 4px;
+  }
+  .nav-item {
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 14px 20px;
+    font-size: 0.88rem;
+    gap: 12px;
+    border-radius: 0 var(--radius-full) var(--radius-full) 0;
+    margin-right: 12px;
+  }
+  .nav-item.active::before {
+    display: none;
+  }
+  .nav-item.active {
+    background: rgba(124,58,237,0.1);
+    font-weight: 700;
+  }
+  .nav-item svg { width: 22px; height: 22px; flex-shrink: 0; }
+
+  /* Push main content to the right of sidebar */
+  body {
+    padding-left: 220px;
+    padding-bottom: 0;
+  }
+
+  .app-main {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 8px 32px;
+  }
+
+  /* Topics grid — 3 columns on desktop */
+  .topics-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* Quick actions grid horizontal */
+  .quick-actions-grid {
+    flex-direction: row;
+  }
+
+  /* Hero stats larger */
+  .hero-stats-row { gap: 16px; }
+  .hsc-val { font-size: 1.5rem; }
+  .hsc-icon { font-size: 1.4rem; }
+
+  /* Quiz arena — constrained width on large screens */
+  .quiz-arena {
+    left: 220px; /* offset for sidebar */
+  }
+  .quiz-scroll-area {
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .question-heading { font-size: 1.2rem; }
+
+  /* Result overlay — sidebar offset */
+  .result-overlay, #result-overlay {
+    left: 220px;
+  }
+  .result-page {
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  /* Modals stay centered */
+  .modal-sheet {
+    max-width: 520px;
+    margin-bottom: 0;
+  }
+
+  /* Performance grid 5 columns */
+  .perf-grid { grid-template-columns: repeat(5, 1fr); }
+
+  /* Section titles bigger */
+  .section-title { font-size: 1.1rem; }
+
+  /* Footer of quiz on desktop */
+  .quiz-footer {
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+  }
+}
+
+/* ─── High contrast mode ─── */
+[data-contrast="true"] {
+  --primary: #5B00D4;
+  --text: #000000;
+  --bg: #FFFFFF;
+  --surface: #F0F0F0;
+  --border: #888888;
+  filter: contrast(1.15);
+}
+[data-theme="dark"][data-contrast="true"] {
+  --text: #FFFFFF;
+  --bg: #000000;
+  --surface: #111111;
+  --border: #666666;
+  filter: contrast(1.2);
+}
+

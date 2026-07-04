@@ -921,6 +921,12 @@ const UIRenderer = {
 
     // SEARCH INPUT CHANGE KEYWORD
     const searchInput = document.getElementById('search-input');
+    searchInput.addEventListener('focus', async () => {
+      // Build index if not already built (handles direct focus without tab switch)
+      if (!isSearchIndexBuilt) {
+        await SearchEngine.buildSearchIndex();
+      }
+    });
     searchInput.addEventListener('input', (e) => {
       const query = e.target.value;
       this.renderSearchResults(query);
@@ -1145,8 +1151,11 @@ const UIRenderer = {
 
   // Results display dialog on quiz completed
   showResults(res) {
+    // Close quiz arena first, then show result overlay on top
+    document.getElementById('quiz-arena').style.display = 'none';
+    document.body.style.overflow = 'auto';
     const overlay = document.getElementById('result-overlay');
-    overlay.style.display = 'flex';
+    overlay.style.display = 'block';
 
     // Calculate percentage
     const pct = res.total > 0 ? Math.round((res.correct / res.total) * 100) : 0;
@@ -1171,12 +1180,15 @@ const UIRenderer = {
 
     document.getElementById('result-feedback-text').textContent = feedback;
 
-    // Button to Review Answers
+    // Button to Review Answers — re-opens the quiz arena in review mode
     document.getElementById('btn-result-review').onclick = () => {
       overlay.style.display = 'none';
-      // Switch quiz mode to practice/review mode manually to show explanations
+      // Switch quiz mode to practice/review mode to show explanations
       QuizEngine.state.mode = 'practice';
       QuizEngine.state.currentIndex = 0;
+      // Re-open quiz arena
+      document.getElementById('quiz-arena').style.display = 'flex';
+      document.body.style.overflow = 'hidden';
       QuizEngine.renderCurrentQuestion();
     };
 
