@@ -8,5 +8,9 @@
   {"file":"acharya-shukla","topic":"आचार्य शुक्ल","icon":"🏛️","desc":"हिन्दी साहित्य का इतिहास"},
   {"file":"bhaktikal","topic":"भक्तिकाल","icon":"🙏","desc":"भक्ति साहित्य"},
   {"file":"ritikal","topic":"रीतिकाल","icon":"🎭","desc":"अलंकृत काव्यधारा"},
-  {"file":"anya-itihaskar","topic":"अन्य इतिहासकार व ग्रंथ","icon":"📗","desc":"हिन्दी साहित्येतिहास के अन्य लेखक"}
+  {"file":"anya-itihaskar","topic":"अन्य इतिहासकार व ग्रंथ","icon":"📗","desc":"हिन्दी साहित्येतिहास के अन्य लेखक"},
+  {"file":"kaal-vibhajan-namakaran","topic":"काल विभाजन एवं नामकरण","icon":"🗓️","desc":"विभिन्न विद्वानों के काल-विभाजन की तुलना"},
+  {"file":"aadikaal-vivad","topic":"आदिकाल संबंधी विवाद","icon":"❓","desc":"आरंभ-वर्ष, नामकरण व प्रथम कवि के मत"},
+  {"file":"hindi-apbhransh-sambandh","topic":"हिन्दी-अपभ्रंश संबंध","icon":"🔗","desc":"हिन्दी और अपभ्रंश के संबंध पर विद्वानों के मत"},
+  {"file":"sahityetihas-aadharbhoot-samagri","topic":"साहित्येतिहास की आधारभूत सामग्री","icon":"📂","desc":"इतिहास-लेखन में प्रयुक्त स्रोत ग्रंथ"}
 ]
