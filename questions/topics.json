@@ -6,5 +6,7 @@
   {"file":"george-grierson","topic":"जॉर्ज ग्रियर्सन","icon":"🇬🇧","desc":"अंग्रेज विद्वान"},
   {"file":"mishrabandhu","topic":"मिश्रबंधु","icon":"📚","desc":"मिश्रबंधु विनोद"},
   {"file":"acharya-shukla","topic":"आचार्य शुक्ल","icon":"🏛️","desc":"हिन्दी साहित्य का इतिहास"},
-  {"file":"bhaktikal","topic":"भक्तिकाल","icon":"🙏","desc":"भक्ति साहित्य"}
+  {"file":"bhaktikal","topic":"भक्तिकाल","icon":"🙏","desc":"भक्ति साहित्य"},
+  {"file":"ritikal","topic":"रीतिकाल","icon":"🎭","desc":"अलंकृत काव्यधारा"},
+  {"file":"anya-itihaskar","topic":"अन्य इतिहासकार व ग्रंथ","icon":"📗","desc":"हिन्दी साहित्येतिहास के अन्य लेखक"}
 ]
