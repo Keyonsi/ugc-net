@@ -8,6 +8,8 @@ let topicsList = [];
 let allQuestionsCache = {}; // Cache: { topicKey: [questions] }
 let isSearchIndexBuilt = false;
 let searchIndex = [];
+let topicSortOrder = 'desc'; // 'desc' = highest first, 'asc' = lowest first
+let lastKnownCounts = {};    // remember counts across re-sorts
 
 // Name Map for Hindi Translation
 const topicNamesMap = {
@@ -875,6 +877,19 @@ const UIRenderer = {
   },
 
   setupActionListeners() {
+  
+    // TOPIC SORT TOGGLE
+    const sortBtn = document.getElementById('btn-sort-topics');
+    if (sortBtn) {
+      sortBtn.addEventListener('click', () => {
+        topicSortOrder = topicSortOrder === 'desc' ? 'asc' : 'desc';
+        sortBtn.dataset.order = topicSortOrder;
+        sortBtn.querySelector('.sort-label').textContent =
+          topicSortOrder === 'desc' ? 'प्रश्न अधिकतम' : 'प्रश्न न्यूनतम';
+        this.renderTopicCards(lastKnownCounts);
+      });
+    }
+      
     // MODALS CLOSE TRIGGERS
     document.getElementById('btn-close-topic-modal').onclick = () => this.closeModal('topic-modal');
     document.getElementById('btn-close-mock-modal').onclick = () => this.closeModal('mock-modal');
@@ -1005,10 +1020,19 @@ const UIRenderer = {
 
   // Render Dashboard Topic Cards
   renderTopicCards(cachedCounts) {
+    lastKnownCounts = cachedCounts; // remember for re-sort toggling
+
     const grid = document.getElementById('topics-grid');
     grid.innerHTML = '';
 
-    topicsList.forEach(topic => {
+    // Build a sortable copy of topics using known counts (unknown counts treated as -1 so they sink/float consistently)
+    const sortedTopics = [...topicsList].sort((a, b) => {
+      const countA = cachedCounts[a.file] !== undefined ? cachedCounts[a.file] : -1;
+      const countB = cachedCounts[b.file] !== undefined ? cachedCounts[b.file] : -1;
+      return topicSortOrder === 'desc' ? countB - countA : countA - countB;
+    });
+
+    sortedTopics.forEach(topic => {
       const key = topic.file;
       const displayName = topic.topic;
       const icon = topic.icon || '📚';
@@ -1036,7 +1060,6 @@ const UIRenderer = {
         </div>
       `;
 
-      // Event Click triggers configuration options
       card.onclick = () => this.openTopicModal(key, displayName, count);
       card.onkeydown = (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
