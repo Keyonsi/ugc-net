@@ -120,7 +120,15 @@
       </div>
 
       <!-- Topics -->
-      <h2 class="section-title">📚 विषय-सूची</h2>
+      <div class="section-header-row">
+        <h2 class="section-title">📚 विषय-सूची</h2>
+        <button id="btn-sort-topics" class="btn-sort-toggle" aria-label="क्रमबद्ध करें" data-order="desc">
+          <span class="sort-label">प्रश्न अधिकतम</span>
+          <svg class="sort-arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+      </div>
       <div id="topics-grid" class="topics-grid">
         <div class="skeleton-card"></div>
         <div class="skeleton-card"></div>
