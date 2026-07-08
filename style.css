@@ -110,6 +110,32 @@ h1,h2,h3,h4 { font-weight: 700; }
   padding-right: 16px;
 }
 
+.btn-sort-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-hindi);
+  white-space: nowrap;
+}
+
+.btn-sort-toggle:hover { border-color: var(--primary); color: var(--primary); }
+.sort-arrow-icon {
+  width: 14px; height: 14px;
+  transition: transform 0.25s ease;
+}
+
+.btn-sort-toggle[data-order="asc"] .sort-arrow-icon {
+  transform: rotate(180deg);
+}
 /* ─── App Header ─── */
 .app-header {
   background: var(--surface);
