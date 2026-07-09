@@ -1,5 +1,4 @@
-const CACHE_NAME = 'ugc-net-hindi-v4';
-
+const CACHE_NAME = 'ugc-net-hindi-v5'; // bumped: v4 -> v5 (forces old cached assets to be dropped)
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -37,37 +36,43 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch Event - Cache First with network fallback & dynamic caching
+// Fetch Event - Cache First with background revalidation for ALL app assets
+// (previously only .json files revalidated in the background, which meant
+//  updated html/css/js could get stuck on mobile/PWA installs indefinitely)
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
-
   const url = new URL(event.request.url);
+
+  // Assets that should always self-heal from the network in the background
+  const isRevalidatable = url.pathname.endsWith('.json') ||
+                           url.pathname.endsWith('.html') ||
+                           url.pathname.endsWith('.js') ||
+                           url.pathname.endsWith('.css') ||
+                           url.pathname === '/' ||
+                           url.pathname.endsWith('/');
 
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
       if (cachedResponse) {
-        // If it is a JSON file (topics or questions), fetch in the background to update cache for next time
-        if (url.pathname.endsWith('.json')) {
+        if (isRevalidatable) {
+          // Stale-while-revalidate: serve cached copy instantly,
+          // but silently fetch + store the newest version for NEXT load.
           fetch(event.request).then(networkResponse => {
-            if (networkResponse.ok) {
+            if (networkResponse && networkResponse.ok) {
               caches.open(CACHE_NAME).then(cache => cache.put(event.request, networkResponse));
             }
-          }).catch(() => {/* Ignore network errors during background updates */});
+          }).catch(() => {/* ignore network errors during background updates */});
         }
         return cachedResponse;
       }
-
       return fetch(event.request).then(networkResponse => {
-        // Cache valid responses from our origin, or questions files from any subdirectory
         if (!networkResponse || networkResponse.status !== 200) {
           return networkResponse;
         }
-
         const responseToCache = networkResponse.clone();
         caches.open(CACHE_NAME).then(cache => {
           cache.put(event.request, responseToCache);
         });
-
         return networkResponse;
       }).catch(() => {
         if (event.request.mode === 'navigate') {
