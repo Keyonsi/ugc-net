@@ -242,6 +242,66 @@ const FavoritesManager = {
 };
 
 // ==========================================================================
+// 4B. TEST HISTORY MANAGER MODULE (max 15 saved tests, FIFO)
+// ==========================================================================
+const TestHistoryManager = {
+  MAX_TESTS: 10,
+
+  getHistory() {
+    const data = localStorage.getItem('ugc_test_history');
+    return data ? JSON.parse(data) : [];
+  },
+
+  // Returns true on success, false if localStorage write failed
+  saveHistory(list) {
+    try {
+      localStorage.setItem('ugc_test_history', JSON.stringify(list));
+      return true;
+    } catch (err) {
+      return false;
+    }
+  },
+
+  // Quota-safe save: if storage is full, keep trimming the oldest entries
+  // (down to a minimum of 1) and retry before giving up entirely.
+  saveTest(testObj) {
+    let list = this.getHistory();
+    list.unshift(testObj); // newest first
+    if (list.length > this.MAX_TESTS) {
+      list.length = this.MAX_TESTS; // drop oldest beyond the cap
+    }
+
+    const attemptedLength = list.length;
+    let ok = this.saveHistory(list);
+    while (!ok && list.length > 1) {
+      list.length = list.length - 1; // trim one more oldest entry and retry
+      ok = this.saveHistory(list);
+    }
+
+    if (!ok) {
+      // Even a single test won't fit — storage is essentially full elsewhere.
+      return { success: false, count: this.getHistory().length, trimmedForSpace: false };
+    }
+
+    return { success: true, count: list.length, trimmedForSpace: list.length < attemptedLength };
+  },
+
+  deleteTest(id) {
+    let list = this.getHistory();
+    list = list.filter(t => t.id !== id);
+    this.saveHistory(list);
+  },
+
+  clearAll() {
+    localStorage.removeItem('ugc_test_history');
+  },
+
+  count() {
+    return this.getHistory().length;
+  }
+};
+
+// ==========================================================================
 // 5. REVISION MANAGER MODULE
 // ==========================================================================
 const RevisionManager = {
@@ -487,7 +547,8 @@ const QuizEngine = {
     timeLeftSec: 0,
     mode: 'practice',   // 'practice', 'timed', 'mock', 'revision', 'favorites'
     topic: null,
-    sourceTopicName: ''
+    sourceTopicName: '',
+    isReview: false      // true when viewing a saved test in read-only review mode
   },
 
   // Helper: Shuffle Array (Fisher-Yates)
@@ -526,7 +587,8 @@ const QuizEngine = {
       timeLeftSec: config.timeLimitMinutes ? config.timeLimitMinutes * 60 : 0,
       mode: config.mode || 'practice',
       topic: config.topic || null,
-      sourceTopicName: config.sourceTopicName || 'मिश्रित टेस्ट'
+      sourceTopicName: config.sourceTopicName || 'मिश्रित टेस्ट',
+      isReview: false
     };
 
     // Shuffling Options logic
@@ -582,6 +644,34 @@ const QuizEngine = {
     }
   },
 
+  // Load a previously saved test (from history) in read-only review mode
+  loadSavedTestForReview(test) {
+    this.stopTimer();
+
+    this.state = {
+      questions: test.questions,
+      currentIndex: 0,
+      answers: [...test.answers],
+      markedReview: new Array(test.questions.length).fill(false),
+      shuffledOpts: (test.shuffledOpts && test.shuffledOpts.length === test.questions.length)
+        ? test.shuffledOpts
+        : test.questions.map(() => [0, 1, 2, 3]),
+      startTime: new Date(test.date),
+      endTime: new Date(test.date),
+      timerInterval: null,
+      timeLimitSec: 0,
+      timeLeftSec: 0,
+      mode: 'practice',
+      topic: test.topicKey || null,
+      sourceTopicName: `📜 ${test.topicName} (समीक्षा)`,
+      isReview: true
+    };
+
+    document.getElementById('quiz-timer').style.display = 'none';
+    UIRenderer.openQuizArena();
+    this.renderCurrentQuestion();
+  },
+
   renderCurrentQuestion() {
     const qIdx = this.state.currentIndex;
     const q = this.state.questions[qIdx];
@@ -590,7 +680,7 @@ const QuizEngine = {
     // UI Updates
     document.getElementById('quiz-curr-idx').textContent = qIdx + 1;
     document.getElementById('quiz-total-cnt').textContent = this.state.questions.length;
-    document.getElementById('quiz-mode-title').textContent = this.state.mode.toUpperCase();
+    document.getElementById('quiz-mode-title').textContent = this.state.isReview ? 'REVIEW' : this.state.mode.toUpperCase();
     document.getElementById('quiz-topic-title').textContent = this.state.sourceTopicName;
     
     // Update Progress bar
@@ -634,8 +724,12 @@ const QuizEngine = {
         }
       }
 
-      // Click Event
-      optBtn.addEventListener('click', () => this.selectOption(originalIndex));
+      // Click Event (disabled entirely in review mode — read-only)
+      if (!this.state.isReview) {
+        optBtn.addEventListener('click', () => this.selectOption(originalIndex));
+      } else {
+        optBtn.style.cursor = 'default';
+      }
       optList.appendChild(optBtn);
     });
 
@@ -647,9 +741,9 @@ const QuizEngine = {
       bookmarkBtn.classList.remove('favorited');
     }
 
-    // Toggle Explanation panel in practice mode
+    // Toggle Explanation panel in practice mode (also shown during review)
     const explPanel = document.getElementById('explanation-panel');
-    if (this.state.mode === 'practice' && selectedOption !== null) {
+    if ((this.state.mode === 'practice' && selectedOption !== null) || this.state.isReview) {
       explPanel.style.display = 'block';
       document.getElementById('explanation-text').textContent = q.expl || 'इस प्रश्न के लिए कोई व्याख्या उपलब्ध नहीं है।';
     } else {
@@ -663,6 +757,7 @@ const QuizEngine = {
     if (isLast) {
       document.getElementById('btn-quiz-next').style.display = 'none';
       document.getElementById('btn-quiz-submit').style.display = 'block';
+      document.getElementById('btn-quiz-submit').textContent = this.state.isReview ? '✅ समीक्षा समाप्त करें' : '✅ सबमिट';
     } else {
       document.getElementById('btn-quiz-next').style.display = 'block';
       document.getElementById('btn-quiz-submit').style.display = 'none';
@@ -678,6 +773,9 @@ const QuizEngine = {
 
   selectOption(optionIndex) {
     const qIdx = this.state.currentIndex;
+
+    // Read-only in review mode
+    if (this.state.isReview) return;
     
     // In practice mode, locking selections after an attempt is made
     if (this.state.mode === 'practice' && this.state.answers[qIdx] !== null) {
@@ -779,6 +877,15 @@ const QuizEngine = {
   },
 
   submitQuiz(isAuto = false) {
+    // In review mode (viewing a saved test), just exit — never re-score or re-save
+    if (this.state.isReview) {
+      this.stopTimer();
+      UIRenderer.closeQuizArena();
+      const statsTab = document.querySelector('.bottom-nav .nav-item[data-tab="tab-stats"]');
+      if (statsTab) statsTab.click();
+      return;
+    }
+
     this.stopTimer();
     this.state.endTime = new Date();
     
@@ -872,12 +979,17 @@ const UIRenderer = {
         if (targetTabId === 'tab-search') {
           await SearchEngine.buildSearchIndex();
         }
+
+        // Progress tab: refresh test history each time it's opened
+        if (targetTabId === 'tab-stats') {
+          UIRenderer.renderTestHistory();
+        }
       });
     });
   },
 
   setupActionListeners() {
-  
+
     // TOPIC SORT TOGGLE
     const sortBtn = document.getElementById('btn-sort-topics');
     if (sortBtn) {
@@ -889,7 +1001,23 @@ const UIRenderer = {
         this.renderTopicCards(lastKnownCounts);
       });
     }
-      
+
+    // CLEAR TEST HISTORY BUTTON
+    const clearHistoryBtn = document.getElementById('btn-clear-history');
+    if (clearHistoryBtn) {
+      clearHistoryBtn.addEventListener('click', () => {
+        if (TestHistoryManager.count() === 0) {
+          this.showToast('इतिहास पहले से ही खाली है।', 'info');
+          return;
+        }
+        if (confirm('क्या आप पूरा टेस्ट इतिहास साफ़ करना चाहते हैं? यह वापस नहीं आएगा।')) {
+          TestHistoryManager.clearAll();
+          this.showToast('🧹 इतिहास साफ़ कर दिया गया', 'info');
+          this.renderTestHistory();
+        }
+      });
+    }
+
     // MODALS CLOSE TRIGGERS
     document.getElementById('btn-close-topic-modal').onclick = () => this.closeModal('topic-modal');
     document.getElementById('btn-close-mock-modal').onclick = () => this.closeModal('mock-modal');
@@ -962,7 +1090,10 @@ const UIRenderer = {
 
     // QUIT QUIZ BUTTON
     document.getElementById('btn-quit-quiz').onclick = () => {
-      if (confirm('क्या आप सचमुच परीक्षा से बाहर निकलना चाहते हैं? आपकी प्रगति सहेज ली जाएगी।')) {
+      const msg = QuizEngine.state.isReview
+        ? 'क्या आप समीक्षा से बाहर निकलना चाहते हैं?'
+        : 'क्या आप सचमुच परीक्षा से बाहर निकलना चाहते हैं? आपकी प्रगति सहेज ली जाएगी।';
+      if (confirm(msg)) {
         QuizEngine.stopTimer();
         this.closeQuizArena();
       }
@@ -1260,6 +1391,57 @@ const UIRenderer = {
       // Reset view to Home tab
       document.querySelector('.bottom-nav .nav-item[data-tab="tab-home"]').click();
     };
+
+    // SAVE TEST BUTTON — ask-at-the-end save into local history (max 15, oldest dropped)
+    const saveBtn = document.getElementById('btn-save-test');
+    saveBtn.disabled = false;
+    saveBtn.textContent = '💾 यह टेस्ट सेव करें';
+    saveBtn.onclick = () => {
+      const st = QuizEngine.state;
+      const wasAtLimit = TestHistoryManager.count() >= TestHistoryManager.MAX_TESTS;
+      const MAX = TestHistoryManager.MAX_TESTS;
+
+      const testObj = {
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        mode: st.mode,
+        topicName: st.sourceTopicName,
+        topicKey: st.topic,
+        questions: st.questions,
+        answers: st.answers,
+        shuffledOpts: st.shuffledOpts,
+        correct: res.correct,
+        wrong: res.wrong,
+        unattempted: res.unattempted,
+        total: res.total,
+        timeStr: res.timeStr,
+        xpGained: res.xpGained,
+        timeLimitMinutes: st.timeLimitSec > 0 ? Math.round(st.timeLimitSec / 60) : null
+      };
+
+      const result = TestHistoryManager.saveTest(testObj);
+
+      if (!result.success) {
+        // Storage is full even after trimming everything else — fail gracefully.
+        saveBtn.disabled = false;
+        saveBtn.textContent = '💾 यह टेस्ट सेव करें';
+        this.showToast('⚠️ टेस्ट सेव नहीं हो सका — डिवाइस की स्टोरेज भर गई है। कृपया इतिहास साफ़ करें और पुनः प्रयास करें।', 'error');
+        return;
+      }
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = '✅ सेव हो गया';
+
+      if (result.trimmedForSpace) {
+        this.showToast(`📥 सेव हो गया, पर जगह कम होने से कुछ पुराने टेस्ट अतिरिक्त रूप से हट गए (${result.count}/${MAX})।`, 'warning');
+      } else if (wasAtLimit) {
+        this.showToast(`📥 सेव कर लिया गया। सीमा ${MAX} पूरी होने से सबसे पुराना टेस्ट हट गया (${result.count}/${MAX})।`, 'warning');
+      } else {
+        this.showToast(`📥 टेस्ट सेव कर लिया गया (${result.count}/${MAX}) — अधिकतम ${MAX} टेस्ट ही सुरक्षित रह सकते हैं।`, 'success');
+      }
+
+      this.renderTestHistory();
+    };
   },
 
 
@@ -1333,6 +1515,9 @@ const UIRenderer = {
     } else {
       weakListContainer.innerHTML = '<div class="empty-state-small">सभी विषयों में आपकी शुद्धता अच्छी है (>60%)!</div>';
     }
+
+    // Keep test history + its count badge in sync whenever stats refresh
+    this.renderTestHistory();
   },
 
   // Favorites Panel Renderer
@@ -1375,6 +1560,86 @@ const UIRenderer = {
     }
   },
 
+  // Test History Panel Renderer (Progress tab) — shows count (x/15) and a hard-limit warning banner
+  renderTestHistory() {
+    const container = document.getElementById('test-history-list');
+    const countEl = document.getElementById('history-count-val');
+    const maxEl = document.getElementById('history-max-val');
+    if (!container) return;
+
+    const history = TestHistoryManager.getHistory();
+
+    if (countEl) countEl.textContent = history.length;
+    if (maxEl) maxEl.textContent = TestHistoryManager.MAX_TESTS;
+
+    if (history.length === 0) {
+      container.innerHTML = `<div class="empty-state-small">अभी तक कोई टेस्ट सेव नहीं किया गया। टेस्ट पूरा करने के बाद "सेव करें" दबाएँ।</div>`;
+      return;
+    }
+
+    const modeLabelMap = {
+      practice: '📖 अभ्यास',
+      timed: '⏱️ समयबद्ध',
+      mock: '🎯 मॉक',
+      revision: '🔄 पुनरावृत्ति',
+      favorites: '⭐ पसंदीदा'
+    };
+
+    container.innerHTML = '';
+    history.forEach(test => {
+      const pct = test.total > 0 ? Math.round((test.correct / test.total) * 100) : 0;
+      const dateObj = new Date(test.date);
+      const dateStr = dateObj.toLocaleDateString('hi-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      const timeOfDay = dateObj.toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' });
+      const modeLabel = modeLabelMap[test.mode] || test.mode;
+
+      const card = document.createElement('div');
+      card.className = 'history-card animate-pop';
+      card.innerHTML = `
+        <div class="history-card-top">
+          <span class="history-mode-badge">${modeLabel}</span>
+          <span class="history-date">${dateStr} • ${timeOfDay}</span>
+        </div>
+        <div class="history-topic-name">📚 ${test.topicName}</div>
+        <div class="history-score-row">
+          <span class="history-pct">${pct}%</span>
+          <span class="history-ratio">${test.correct}/${test.total} सही</span>
+          <span class="history-time">⏱ ${test.timeStr}</span>
+        </div>
+        <div class="history-actions">
+          <button class="btn-history-review">🔍 समीक्षा</button>
+          <button class="btn-history-retake">🔁 फिर से दें</button>
+          <button class="btn-history-delete" aria-label="हटाएं">🗑️</button>
+        </div>
+      `;
+
+      card.querySelector('.btn-history-review').onclick = () => {
+        QuizEngine.loadSavedTestForReview(test);
+      };
+
+      card.querySelector('.btn-history-retake').onclick = () => {
+        QuizEngine.startQuiz(test.questions, {
+          mode: test.timeLimitMinutes ? 'timed' : 'practice',
+          topic: test.topicKey,
+          sourceTopicName: test.topicName,
+          shuffleQuestions: false,
+          shuffleOptions: true,
+          timeLimitMinutes: test.timeLimitMinutes || null
+        });
+      };
+
+      card.querySelector('.btn-history-delete').onclick = () => {
+        if (confirm('क्या आप इस सेव किए गए टेस्ट को हटाना चाहते हैं?')) {
+          TestHistoryManager.deleteTest(test.id);
+          this.showToast('🗑️ टेस्ट इतिहास से हटाया गया', 'info');
+          this.renderTestHistory();
+        }
+      };
+
+      container.appendChild(card);
+    });
+  },
+
   // Instant Search Results Renderer
   renderSearchResults(query) {
     const resultsContainer = document.getElementById('search-results');
@@ -1383,7 +1648,7 @@ const UIRenderer = {
       resultsContainer.innerHTML = `
         <div class="empty-state">
           <span class="empty-icon">🔍</span>
-          <p>सर्च करने के लिए टाइप करना शुरू करें। प्रश्न का पाठ या विकल्प खोजे जा सकते हैं।</p>
+          <p>सर्च करने के लिए ऊपर टाइप करें। प्रश्न का पाठ या विकल्प खोजे जा सकते हैं।</p>
         </div>
       `;
       return;
@@ -1474,4 +1739,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load Initial Storage Stats & Favorites
   UIRenderer.renderStats();
   UIRenderer.renderFavorites();
+  UIRenderer.renderTestHistory();
 });
