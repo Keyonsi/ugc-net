@@ -229,6 +229,20 @@
       <div id="weak-topics-list" class="weak-topics-list">
         <div class="empty-state-small">टेस्ट के बाद कमजोर विषय यहाँ दिखेंगे।</div>
       </div>
+
+      <!-- TEST HISTORY -->
+      <div class="section-header-row">
+        <h3 class="section-sub-title">📜 टेस्ट इतिहास (<span id="history-count-val">0</span>/<span id="history-max-val">10</span>)</h3>
+        <button id="btn-clear-history" class="btn-sort-toggle" aria-label="इतिहास साफ़ करें">
+          <span class="sort-label">🧹 साफ़ करें</span>
+        </button>
+      </div>
+      <div class="history-warning-banner">
+        ⚠️ केवल अधिकतम <strong>10 टेस्ट</strong> ही सुरक्षित रह सकते हैं — नया टेस्ट सेव करने पर सबसे पुराना टेस्ट अपने-आप हट जाएगा।
+      </div>
+      <div id="test-history-list" class="test-history-list">
+        <div class="empty-state-small">अभी तक कोई टेस्ट सेव नहीं किया गया। टेस्ट पूरा करने के बाद "सेव करें" दबाएँ।</div>
+      </div>
     </section>
   </main>
 
@@ -403,8 +417,12 @@
       <!-- Motivational Feedback -->
       <div class="result-feedback" id="result-feedback-text"></div>
 
+      <!-- Save-to-history notice -->
+      <div class="result-save-note">💾 सेव करने पर यह टेस्ट "प्रगति" टैब में इतिहास सूची में जुड़ जाएगा (अधिकतम 10 टेस्ट सुरक्षित रहते हैं)।</div>
+
       <!-- Action Buttons -->
       <div class="result-actions">
+        <button id="btn-save-test" class="btn-outline btn-block">💾 यह टेस्ट सेव करें</button>
         <button id="btn-result-review" class="btn-outline btn-block">🔍 उत्तर समीक्षा</button>
         <button id="btn-result-close" class="btn-primary btn-block btn-lg">🏠 होम पर जाएं</button>
       </div>
