@@ -242,7 +242,7 @@ const FavoritesManager = {
 };
 
 // ==========================================================================
-// 4B. TEST HISTORY MANAGER MODULE (max 15 saved tests, FIFO)
+// 4B. TEST HISTORY MANAGER MODULE (max 10 saved tests, FIFO)
 // ==========================================================================
 const TestHistoryManager = {
   MAX_TESTS: 10,
@@ -262,9 +262,23 @@ const TestHistoryManager = {
     }
   },
 
+  // Compact a full question object down to just {q, topic} — the minimum
+  // needed to re-find the full question (with options + explanation) later
+  // from allQuestionsCache. This cuts stored size by roughly 3-5x per test,
+  // since options + explanation text are never duplicated into history.
+  compactQuestions(questions) {
+    return questions.map(q => ({ q: q.q, topic: q.topic || null }));
+  },
+
   // Quota-safe save: if storage is full, keep trimming the oldest entries
   // (down to a minimum of 1) and retry before giving up entirely.
-  saveTest(testObj) {
+  saveTest(rawTestObj) {
+    // Store compact question refs instead of full question objects
+    const testObj = {
+      ...rawTestObj,
+      questions: this.compactQuestions(rawTestObj.questions)
+    };
+
     let list = this.getHistory();
     list.unshift(testObj); // newest first
     if (list.length > this.MAX_TESTS) {
@@ -286,6 +300,26 @@ const TestHistoryManager = {
     return { success: true, count: list.length, trimmedForSpace: list.length < attemptedLength };
   },
 
+  // Rebuild full question objects (with opts/ans/expl) for a saved test's
+  // compact {q, topic} refs by loading each referenced topic's questions
+  // into allQuestionsCache and matching on question text.
+  async hydrateTest(test) {
+    const uniqueTopics = [...new Set(test.questions.map(ref => ref.topic).filter(Boolean))];
+    for (const topicKey of uniqueTopics) {
+      await QuestionLoader.loadQuestionsForTopic(topicKey);
+    }
+
+    const fullQuestions = test.questions.map(ref => {
+      const pool = ref.topic ? (allQuestionsCache[ref.topic] || []) : [];
+      const found = pool.find(q => q.q === ref.q);
+      // Fallback stub if the original question was ever removed/edited —
+      // keeps review/retake from crashing, just shows the saved text only.
+      return found || { q: ref.q, opts: ['—', '—', '—', '—'], ans: 0, expl: '', topic: ref.topic };
+    });
+
+    return { ...test, questions: fullQuestions };
+  },
+
   deleteTest(id) {
     let list = this.getHistory();
     list = list.filter(t => t.id !== id);
@@ -298,6 +332,63 @@ const TestHistoryManager = {
 
   count() {
     return this.getHistory().length;
+  },
+
+  // Approximate size (in KB) of the stored history — UTF-16 chars ≈ 2 bytes each
+  getStorageSizeKB() {
+    const raw = localStorage.getItem('ugc_test_history') || '';
+    return Math.round((raw.length * 2) / 1024 * 10) / 10;
+  },
+
+  // Export the full saved history as a downloadable JSON file
+  exportJSON() {
+    const list = this.getHistory();
+    if (list.length === 0) return null;
+    const blob = new Blob([JSON.stringify(list, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `ugc-net-test-history-${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return list.length;
+  },
+
+  // Import a previously exported JSON file's contents (array of test objects).
+  // Merges with existing history (newest first), respecting MAX_TESTS and
+  // quota safety exactly like a normal save.
+  importJSON(jsonString) {
+    let imported;
+    try {
+      imported = JSON.parse(jsonString);
+      if (!Array.isArray(imported)) throw new Error('not an array');
+    } catch (err) {
+      return { success: false, error: 'invalid-json' };
+    }
+
+    const existing = this.getHistory();
+    const existingIds = new Set(existing.map(t => t.id));
+    const newOnes = imported.filter(t => t && t.id && !existingIds.has(t.id));
+
+    let merged = [...newOnes, ...existing].sort((a, b) => new Date(b.date) - new Date(a.date));
+    if (merged.length > this.MAX_TESTS) {
+      merged.length = this.MAX_TESTS;
+    }
+
+    let ok = this.saveHistory(merged);
+    while (!ok && merged.length > 1) {
+      merged.length = merged.length - 1;
+      ok = this.saveHistory(merged);
+    }
+
+    if (!ok) {
+      return { success: false, error: 'storage-full' };
+    }
+
+    return { success: true, importedCount: newOnes.length, totalCount: merged.length };
   }
 };
 
@@ -1018,6 +1109,52 @@ const UIRenderer = {
       });
     }
 
+    // EXPORT TEST HISTORY BUTTON — downloads a .json backup file
+    const exportHistoryBtn = document.getElementById('btn-export-history');
+    if (exportHistoryBtn) {
+      exportHistoryBtn.addEventListener('click', () => {
+        const exportedCount = TestHistoryManager.exportJSON();
+        if (exportedCount === null) {
+          this.showToast('इतिहास खाली है — निर्यात करने के लिए कुछ नहीं है।', 'info');
+        } else {
+          this.showToast(`📤 ${exportedCount} टेस्ट फ़ाइल में निर्यात हो गए।`, 'success');
+        }
+      });
+    }
+
+    // IMPORT TEST HISTORY BUTTON — reads a previously exported .json file
+    const importHistoryBtn = document.getElementById('btn-import-history');
+    const importFileInput = document.getElementById('import-history-file');
+    if (importHistoryBtn && importFileInput) {
+      importHistoryBtn.addEventListener('click', () => importFileInput.click());
+
+      importFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          const result = TestHistoryManager.importJSON(evt.target.result);
+          if (!result.success) {
+            const msg = result.error === 'invalid-json'
+              ? '⚠️ फ़ाइल पढ़ी नहीं जा सकी — यह एक मान्य निर्यात फ़ाइल नहीं लगती।'
+              : '⚠️ आयात नहीं हो सका — स्टोरेज भरी हुई है।';
+            this.showToast(msg, 'error');
+          } else if (result.importedCount === 0) {
+            this.showToast('ℹ️ इस फ़ाइल के सभी टेस्ट पहले से मौजूद हैं।', 'info');
+          } else {
+            this.showToast(`📥 ${result.importedCount} नए टेस्ट जोड़े गए (कुल ${result.totalCount}/${TestHistoryManager.MAX_TESTS})।`, 'success');
+          }
+          this.renderTestHistory();
+          importFileInput.value = ''; // allow re-importing the same file later
+        };
+        reader.onerror = () => {
+          this.showToast('⚠️ फ़ाइल पढ़ने में त्रुटि हुई।', 'error');
+        };
+        reader.readAsText(file);
+      });
+    }
+
     // MODALS CLOSE TRIGGERS
     document.getElementById('btn-close-topic-modal').onclick = () => this.closeModal('topic-modal');
     document.getElementById('btn-close-mock-modal').onclick = () => this.closeModal('mock-modal');
@@ -1560,17 +1697,19 @@ const UIRenderer = {
     }
   },
 
-  // Test History Panel Renderer (Progress tab) — shows count (x/15) and a hard-limit warning banner
+  // Test History Panel Renderer (Progress tab) — shows count (x/10), storage size, and a hard-limit warning banner
   renderTestHistory() {
     const container = document.getElementById('test-history-list');
     const countEl = document.getElementById('history-count-val');
     const maxEl = document.getElementById('history-max-val');
+    const sizeEl = document.getElementById('history-size-val');
     if (!container) return;
 
     const history = TestHistoryManager.getHistory();
 
     if (countEl) countEl.textContent = history.length;
     if (maxEl) maxEl.textContent = TestHistoryManager.MAX_TESTS;
+    if (sizeEl) sizeEl.textContent = `~${TestHistoryManager.getStorageSizeKB()} KB`;
 
     if (history.length === 0) {
       container.innerHTML = `<div class="empty-state-small">अभी तक कोई टेस्ट सेव नहीं किया गया। टेस्ट पूरा करने के बाद "सेव करें" दबाएँ।</div>`;
@@ -1613,12 +1752,16 @@ const UIRenderer = {
         </div>
       `;
 
-      card.querySelector('.btn-history-review').onclick = () => {
-        QuizEngine.loadSavedTestForReview(test);
+      card.querySelector('.btn-history-review').onclick = async () => {
+        this.showToast('⏳ प्रश्न लोड हो रहे हैं...', 'info');
+        const fullTest = await TestHistoryManager.hydrateTest(test);
+        QuizEngine.loadSavedTestForReview(fullTest);
       };
 
-      card.querySelector('.btn-history-retake').onclick = () => {
-        QuizEngine.startQuiz(test.questions, {
+      card.querySelector('.btn-history-retake').onclick = async () => {
+        this.showToast('⏳ प्रश्न लोड हो रहे हैं...', 'info');
+        const fullTest = await TestHistoryManager.hydrateTest(test);
+        QuizEngine.startQuiz(fullTest.questions, {
           mode: test.timeLimitMinutes ? 'timed' : 'practice',
           topic: test.topicKey,
           sourceTopicName: test.topicName,
