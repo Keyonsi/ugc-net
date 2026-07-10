@@ -240,6 +240,18 @@
       <div class="history-warning-banner">
         ⚠️ केवल अधिकतम <strong>10 टेस्ट</strong> ही सुरक्षित रह सकते हैं — नया टेस्ट सेव करने पर सबसे पुराना टेस्ट अपने-आप हट जाएगा।
       </div>
+      <div class="history-toolbar-row">
+        <span class="history-size-note">💾 स्टोरेज उपयोग: <strong id="history-size-val">~0 KB</strong></span>
+        <div class="history-io-btns">
+          <button id="btn-export-history" class="btn-sort-toggle" aria-label="इतिहास निर्यात करें">
+            <span class="sort-label">📤 निर्यात</span>
+          </button>
+          <button id="btn-import-history" class="btn-sort-toggle" aria-label="इतिहास आयात करें">
+            <span class="sort-label">📥 आयात</span>
+          </button>
+          <input type="file" id="import-history-file" accept="application/json,.json" style="display:none">
+        </div>
+      </div>
       <div id="test-history-list" class="test-history-list">
         <div class="empty-state-small">अभी तक कोई टेस्ट सेव नहीं किया गया। टेस्ट पूरा करने के बाद "सेव करें" दबाएँ।</div>
       </div>
